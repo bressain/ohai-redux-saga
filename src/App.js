@@ -19,6 +19,7 @@ function mapDispatchToProps(dispatch) {
 
 class App extends Component {
   componentDidMount() {
+    this.props.fetchFilm(2)
     this.props.fetchFilm(3)
   }
   renderCharacter = personId => {

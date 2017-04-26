@@ -22,19 +22,22 @@ const fetchPersonSuccess = (id, person) => ({
 })
 
 export function fetchFilm(filmId) {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     dispatch(fetchFilmRequest(filmId))
 
     const res = await api.fetchFilm.request(filmId)
     const film = api.fetchFilm.deserializeSuccess(res)
     dispatch(fetchFilmSuccess(film))
 
-    await Promise.all(film.characters.map(personId => fetchPerson(personId)(dispatch)))
+    await Promise.all(film.characters.map(personId => fetchPerson(personId)(dispatch, getState)))
   }
 }
 
 export function fetchPerson(personId) {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
+    if (getState().reducer.people[personId])
+      return
+
     dispatch(fetchPersonRequest(personId))
     const res = await api.fetchPerson.request(personId)
     dispatch(fetchPersonSuccess(personId, api.fetchPerson.deserializeSuccess(res)))

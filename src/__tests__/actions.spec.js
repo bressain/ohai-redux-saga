@@ -8,6 +8,7 @@ describe('#fetchFilm', () => {
   const characterIds = [1, 2]
   const res = { data: { title: 'wow', episode_id: 3, characters } }
   const reqPromise = new Promise(resolve => resolve(res))
+  const getState = () => ({ reducer: { people: {} } })
   const personPromises = []
   const peopleRes = []
 
@@ -22,7 +23,7 @@ describe('#fetchFilm', () => {
       return req
     })
 
-    await actions.fetchFilm(3)(dispatch)
+    await actions.fetchFilm(3)(dispatch, getState)
   })
 
   it('dispatches fetch request', () => {
@@ -54,16 +55,17 @@ describe('#fetchFilm', () => {
   })
 })
 
-describe('#fetchPerson', () => {
+describe('#fetchPerson is not cached', () => {
   let dispatch
   const res = { data: { name: 'Luke Skywalker' } }
   const reqPromise = new Promise(resolve => resolve(res))
+  const getState = () => ({ reducer: { people: {} } })
 
   beforeAll(async () => {
     dispatch = jest.fn()
     api.fetchPerson.request = jest.fn(() => reqPromise)
 
-    await actions.fetchPerson(1)(dispatch)
+    await actions.fetchPerson(1)(dispatch, getState)
   })
 
   it('dispatches fetch request', () => {
@@ -78,5 +80,22 @@ describe('#fetchPerson', () => {
     const person = { ...api.fetchPerson.deserializeSuccess(res), id: 1 }
     await reqPromise
     expect(dispatch).toBeCalledWith({ type: TYPES.FETCH_PERSON_SUCCESS, person })
+  })
+})
+
+describe('#fetchPerson is cached', () => {
+  let dispatch
+  const getState = () => ({ reducer: { people: { 3: { name: 'Han Solo' } } } })
+
+  beforeAll(async () => {
+    dispatch = jest.fn()
+    api.fetchPerson.request = jest.fn()
+
+    await actions.fetchPerson(3)(dispatch, getState)
+  })
+
+  it('does not fetch the person again', () => {
+    expect(api.fetchPerson.request.mock.calls.length).toEqual(0)
+    expect(dispatch.mock.calls.length).toEqual(0)
   })
 })
