@@ -1,7 +1,10 @@
+import { call, put, select } from 'redux-saga/effects'
+
 import * as api from './api'
+import { select as selector } from './reducer'
 import TYPES from './types'
 
-const fetchFilmRequest = filmId => ({
+export const fetchFilm = filmId => ({
   type: TYPES.FETCH_FILM_REQUEST,
   filmId
 })
@@ -11,7 +14,7 @@ const fetchFilmSuccess = film => ({
   film
 })
 
-const fetchPersonRequest = personId => ({
+export const fetchPerson = personId => ({
   type: TYPES.FETCH_PERSON_REQUEST,
   personId
 })
@@ -21,25 +24,21 @@ const fetchPersonSuccess = (id, person) => ({
   person: { ...person, id }
 })
 
-export function fetchFilm(filmId) {
-  return async (dispatch, getState) => {
-    dispatch(fetchFilmRequest(filmId))
+export function* executeFetchFilm({ filmId }) {
+  const res = yield call(api.fetchFilm.request, filmId)
+  const film = api.fetchFilm.deserializeSuccess(res)
+  yield put(fetchFilmSuccess(film))
 
-    const res = await api.fetchFilm.request(filmId)
-    const film = api.fetchFilm.deserializeSuccess(res)
-    dispatch(fetchFilmSuccess(film))
-
-    await Promise.all(film.characters.map(personId => fetchPerson(personId)(dispatch, getState)))
+  for (let personId of film.characters) {
+    yield put(fetchPerson(personId))
   }
 }
 
-export function fetchPerson(personId) {
-  return async (dispatch, getState) => {
-    if (getState().reducer.people[personId])
-      return
+export function* executeFetchPerson({ personId }) {
+  const state = yield select(selector)
+  if (state.people[personId])
+    return
 
-    dispatch(fetchPersonRequest(personId))
-    const res = await api.fetchPerson.request(personId)
-    dispatch(fetchPersonSuccess(personId, api.fetchPerson.deserializeSuccess(res)))
-  }
+  const res = yield call(api.fetchPerson.request, personId)
+  yield put(fetchPersonSuccess(personId, api.fetchPerson.deserializeSuccess(res)))
 }

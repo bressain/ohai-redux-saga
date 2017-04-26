@@ -28,3 +28,7 @@ export default function (state = initialState, action = {}) {
     ? handlers[action.type](state, action)
     : state
 }
+
+export function select(state) {
+  return state.reducer
+}

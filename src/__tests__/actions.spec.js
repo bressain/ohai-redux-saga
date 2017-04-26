@@ -1,101 +1,62 @@
+import { call, put, select } from 'redux-saga/effects'
+
 import * as actions from '../actions'
 import * as api from '../api'
+import { select as selector } from '../reducer'
 import TYPES from '../types'
 
-describe('#fetchFilm', () => {
-  let dispatch
+describe('#executeFetchFilm', () => {
   const characters = ['http://swapi.co/api/people/1/', 'http://swapi.co/api/people/2/']
   const characterIds = [1, 2]
   const res = { data: { title: 'wow', episode_id: 3, characters } }
-  const reqPromise = new Promise(resolve => resolve(res))
-  const getState = () => ({ reducer: { people: {} } })
-  const personPromises = []
-  const peopleRes = []
 
-  beforeAll(async () => {
-    dispatch = jest.fn()
-    api.fetchFilm.request = jest.fn(() => reqPromise)
-    api.fetchPerson.request = jest.fn(() => {
-      const pRes = { data: { name: 'Derp' } }
-      const req = new Promise(resolve => resolve(pRes))
-      personPromises.push(req)
-      peopleRes.push(pRes)
-      return req
-    })
-
-    await actions.fetchFilm(3)(dispatch, getState)
-  })
-
-  it('dispatches fetch request', () => {
-    expect(dispatch).toBeCalledWith({ type: TYPES.FETCH_FILM_REQUEST, filmId: 3 })
-  })
+  const iterator = actions.executeFetchFilm({ filmId: 3 })
 
   it('calls api', () => {
-    expect(api.fetchFilm.request).toBeCalledWith(3)
-  })
-
-  it('calls api for characters', () => {
-    expect(api.fetchPerson.request).toBeCalledWith(1)
-    expect(api.fetchPerson.request).toBeCalledWith(2)
+    expect(iterator.next().value).toEqual(call(api.fetchFilm.request, 3))
   })
 
   it('dispatches success event', async () => {
     const film = { ...api.fetchFilm.deserializeSuccess(res), characters: characterIds }
-    await reqPromise
-    expect(dispatch).toBeCalledWith({ type: TYPES.FETCH_FILM_SUCCESS, film })
+    expect(iterator.next(res).value).toEqual(put({ type: TYPES.FETCH_FILM_SUCCESS, film }))
   })
 
-  it('dispatches person success events', async () => {
-    const people = characterIds.map((id, idx) => ({ ...api.fetchPerson.deserializeSuccess(peopleRes[idx]), id }))
-    await Promise.all(personPromises)
-
-    for (let person of people) {
-      expect(dispatch).toBeCalledWith({ type: TYPES.FETCH_PERSON_SUCCESS, person })
-    }
+  it('fetches characters', () => {
+    expect(iterator.next().value).toEqual(put({ type: TYPES.FETCH_PERSON_REQUEST, personId: 1 }))
+    expect(iterator.next().value).toEqual(put({ type: TYPES.FETCH_PERSON_REQUEST, personId: 2 }))
   })
 })
 
-describe('#fetchPerson is not cached', () => {
-  let dispatch
+describe('#executeFetchPerson is not cached', () => {
   const res = { data: { name: 'Luke Skywalker' } }
-  const reqPromise = new Promise(resolve => resolve(res))
-  const getState = () => ({ reducer: { people: {} } })
+  const state = { people: {} }
 
-  beforeAll(async () => {
-    dispatch = jest.fn()
-    api.fetchPerson.request = jest.fn(() => reqPromise)
+  const iterator = actions.executeFetchPerson({ personId: 1 })
 
-    await actions.fetchPerson(1)(dispatch, getState)
-  })
-
-  it('dispatches fetch request', () => {
-    expect(dispatch).toBeCalledWith({ type: TYPES.FETCH_PERSON_REQUEST, personId: 1 })
+  it('checks state for cached', () => {
+    expect(iterator.next().value).toEqual(select(selector))
   })
 
   it('calls api', () => {
-    expect(api.fetchPerson.request).toBeCalledWith(1)
+    expect(iterator.next(state).value).toEqual(call(api.fetchPerson.request, 1))
   })
 
-  it('dispatches success event', async () => {
+  it('dispatches success event', () => {
     const person = { ...api.fetchPerson.deserializeSuccess(res), id: 1 }
-    await reqPromise
-    expect(dispatch).toBeCalledWith({ type: TYPES.FETCH_PERSON_SUCCESS, person })
+    expect(iterator.next(res).value).toEqual(put({ type: TYPES.FETCH_PERSON_SUCCESS, person }))
   })
 })
 
-describe('#fetchPerson is cached', () => {
-  let dispatch
-  const getState = () => ({ reducer: { people: { 3: { name: 'Han Solo' } } } })
+describe('#executeFetchPerson is cached', () => {
+  const state = { people: { 3: { name: 'Han Solo' } } }
 
-  beforeAll(async () => {
-    dispatch = jest.fn()
-    api.fetchPerson.request = jest.fn()
+  const iterator = actions.executeFetchPerson({ personId: 3 })
 
-    await actions.fetchPerson(3)(dispatch, getState)
+  it('checks state for cached', () => {
+    expect(iterator.next().value).toEqual(select(selector))
   })
 
   it('does not fetch the person again', () => {
-    expect(api.fetchPerson.request.mock.calls.length).toEqual(0)
-    expect(dispatch.mock.calls.length).toEqual(0)
+    expect(iterator.next(state).done).toEqual(true)
   })
 })
