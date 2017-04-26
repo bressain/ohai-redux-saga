@@ -21,14 +21,27 @@ class App extends Component {
   componentDidMount() {
     this.props.fetchFilm(3)
   }
-  renderFilm(film) {
+  renderCharacter = personId => {
+    if (!this.props.store.people[personId])
+      return <li key={personId}>Loading...</li>
+
+    return <li key={personId}>{this.props.store.people[personId].name}</li>
+  }
+  renderCharacters(film) {
+    if (!Object.keys(this.props.store.people).length) return
+
+    return (
+      <ul>
+        {film.characters.map(this.renderCharacter)}
+      </ul>
+    )
+  }
+  renderFilm = film => {
     return (
       <li key={film.title}>
         <h2>Episode {film.episode}: {film.title}</h2>
         <h3>Characters:</h3>
-        <ul>
-          {film.characters.map(c => <li>{c}</li>)}
-        </ul>
+        {this.renderCharacters(film)}
       </li>
     )
   }

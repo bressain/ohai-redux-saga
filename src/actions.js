@@ -11,10 +11,32 @@ const fetchFilmSuccess = film => ({
   film
 })
 
+const fetchPersonRequest = personId => ({
+  type: TYPES.FETCH_PERSON_REQUEST,
+  personId
+})
+
+const fetchPersonSuccess = (id, person) => ({
+  type: TYPES.FETCH_PERSON_SUCCESS,
+  person: { ...person, id }
+})
+
 export function fetchFilm(filmId) {
   return async (dispatch) => {
     dispatch(fetchFilmRequest(filmId))
+
     const res = await api.fetchFilm.request(filmId)
-    dispatch(fetchFilmSuccess(api.fetchFilm.deserializeSuccess(res)))
+    const film = api.fetchFilm.deserializeSuccess(res)
+    dispatch(fetchFilmSuccess(film))
+
+    await Promise.all(film.characters.map(personId => fetchPerson(personId)(dispatch)))
+  }
+}
+
+export function fetchPerson(personId) {
+  return async (dispatch) => {
+    dispatch(fetchPersonRequest(personId))
+    const res = await api.fetchPerson.request(personId)
+    dispatch(fetchPersonSuccess(personId, api.fetchPerson.deserializeSuccess(res)))
   }
 }
