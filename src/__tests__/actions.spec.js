@@ -16,7 +16,7 @@ describe('#executeFetchFilm', () => {
     expect(iterator.next().value).toEqual(call(api.fetchFilm.request, 3))
   })
 
-  it('dispatches success event', async () => {
+  it('dispatches success event', () => {
     const film = { ...api.fetchFilm.deserializeSuccess(res), characters: characterIds }
     expect(iterator.next(res).value).toEqual(put({ type: TYPES.FETCH_FILM_SUCCESS, film }))
   })
